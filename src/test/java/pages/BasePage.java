@@ -15,8 +15,9 @@ public abstract class BasePage {
     protected WebDriver driver;
     protected JavascriptExecutor js;
 
-    BasePage(){
-        //abstract impl
+    BasePage(final WebDriver driver){
+        this.driver = driver;
+        js = (JavascriptExecutor) driver;
     }
 
     //if no spec time - use default
@@ -24,7 +25,7 @@ public abstract class BasePage {
         return find(locator, Waiting.MIDDLE);
     }
 
-    //using fluentWait - to ignore exception, also can customize waiting option, how long, how offten
+    //using fluentWait - to ignore exception, also can customize waiting option, how long, how often
     protected WebElement find(final By locator, final int timeout){
         Wait<WebDriver> wait = new FluentWait<WebDriver>(driver)
                 .withTimeout(timeout, TimeUnit.SECONDS)
@@ -78,10 +79,44 @@ public abstract class BasePage {
         //Logger.info(String.format("Click on element, by: %s", locator));
     }
 
-    protected void setImplicitlyTimeOut(int timeOut){
-        driver.manage().timeouts().implicitlyWait(timeOut, TimeUnit.SECONDS);
+
+
+    protected boolean isElementPresent(final By locator){
+        return isElementPresent(locator, Waiting.MIDDLE);
     }
 
+    protected boolean isElementPresent(final By locator, final int timeout){
+        Wait<WebDriver> wait = new FluentWait<WebDriver>(driver)
+                .withTimeout(timeout, TimeUnit.SECONDS)
+                .pollingEvery(Waiting.Polling.OFFTEN, TimeUnit.MILLISECONDS)
+                .ignoring(StaleElementReferenceException.class);
+
+        setImplicitlyTimeOut(Waiting.NONE);
+
+        final WebElement[] element = {null};
+
+        try {
+            wait.until(new ExpectedCondition<Boolean>() {
+                public Boolean apply(WebDriver driver) {
+                    try {
+                        element[0] = driver.findElement(locator);
+                        return element[0] != null;
+                    } catch (NoSuchElementException ex) {
+                        return Boolean.FALSE;
+                    }
+                }
+            });
+        } catch (TimeoutException ex){
+            return Boolean.FALSE;
+        }
+
+        setImplicitlyTimeOut(Waiting.MIDDLE);
+        return Boolean.TRUE;
+    }
+
+    protected void setImplicitlyTimeOut(int timeoutInSeconds){
+        driver.manage().timeouts().implicitlyWait(timeoutInSeconds, TimeUnit.SECONDS);
+    }
 
     protected abstract void waitPageToLoad();
 }
